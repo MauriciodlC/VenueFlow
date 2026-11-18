@@ -1,0 +1,22 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+
+# Node / Vite
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Editors and OS
+.idea/
+.vs/
+.vscode/
+.DS_Store
