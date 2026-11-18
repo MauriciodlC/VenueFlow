@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web (lint, typecheck, component tests, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      # No lockfile is committed yet; switch to --frozen-lockfile once it is.
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  api:
+    name: API (format, build, xUnit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore VenueFlow.sln
+      - run: dotnet format VenueFlow.sln --verify-no-changes --no-restore
+      - run: dotnet build VenueFlow.sln --configuration Release --no-restore
+      - run: dotnet test VenueFlow.sln --configuration Release --no-build --logger "trx;LogFileName=results.trx"
+      - name: Check the EF Core model matches the migrations
+        working-directory: .
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes \
+            --project services/api/src/VenueFlow.Infrastructure \
+            --startup-project services/api/src/VenueFlow.Api
