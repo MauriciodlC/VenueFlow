@@ -2,7 +2,7 @@
 
 **Conversational booking for flexible spaces and workshops.** VenueFlow is a two-sided booking marketplace: hosts publish bookable time slots for studios, workshop rooms and coworking spaces, and guests search in plain language. The booking engine alone controls availability and price.
 
-> **Status:** early development, following a 12-week roadmap (see below). It uses synthetic venues and demo reservations. Payments are simulated; no cards are collected.
+> **Status:** early development, following a 7-week roadmap (see below). It uses synthetic venues and demo reservations. Payments are simulated; no cards are collected.
 
 ## The problem
 
@@ -72,14 +72,15 @@ flowchart LR
 
 ## Roadmap
 
-| Weeks | Focus |
-|---|---|
-| 1–2 | Domain design, Vue/.NET setup; identity and host listing workflow |
-| 3–4 | Inventory schedules and daylight saving; pricing and discovery filters |
-| 5–6 | Holds and booking confirmation; cancellations, refunds and host operations |
-| 7–8 | AI search-intent parsing with editable filters; staging and notifications |
-| 9–10 | Policy Q&A and explained recommendations; waitlists with capacity-safe offers |
-| 11–12 | Security, load testing and recovery; public demo and release |
+| Week | Focus | Status |
+|---|---|---|
+| Week 1 | **Domain design, Vue/.NET scaffolding** — Add domain design docs and Vue 3 app shell, bootstrap ASP.NET Core API with health route, EF Core and Compose, seed demo venues with IANA timezones and document setup | Planned |
+| Week 2 | **Host listings & schedules** — Add host accounts, venue drafts and publication workflow, add opening rules, schedule exceptions and DST-safe slots, add Vue host calendar with closures and capacity | Planned |
+| Week 3 | **Pricing, holds & booking** — Add price rules, service fees and quote snapshots, add transactional holds and idempotent confirmation, add Vue booking review with hold countdown | Planned |
+| Week 4 | **Cancellations & host operations** — Add cancellation windows and simulated refunds, add host dashboard for upcoming bookings and check-ins | Planned |
+| Week 5 | **AI search & staging** — Parse search intent into validated, editable filters, add hold-expiry cleanup and outbox relay, deploy staging with HTTPS and secrets | Planned |
+| Week 6 | **Policy Q&A & waitlists** — Add versioned venue policy chunks and embeddings, add waitlist entries and expiring offers, add Vue waitlist opt-in and offer screens | Planned |
+| Week 7 | **Security, load testing & release** — Audit role policies and resource checks, run concurrent booking and input security scans, add release acceptance checklist and changelog, ship demo with synthetic slots and monitoring | Planned |
 
 ## Getting started
 
