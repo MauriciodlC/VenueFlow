@@ -74,7 +74,7 @@ flowchart LR
 
 | Week | Focus | Status |
 |---|---|---|
-| Week 1 | **Domain design, Vue/.NET scaffolding** — Add domain design docs and Vue 3 app shell, bootstrap ASP.NET Core API with health route, EF Core and Compose, seed demo venues with IANA timezones and document setup | Planned |
+| Week 1 | **Domain design, Vue/.NET scaffolding** — Add domain design docs and Vue 3 app shell, bootstrap ASP.NET Core API with health route, EF Core and Compose, seed demo venues with IANA timezones and document setup | ✅ Done |
 | Week 2 | **Host listings & schedules** — Add host accounts, venue drafts and publication workflow, add opening rules, schedule exceptions and DST-safe slots, add Vue host calendar with closures and capacity | Planned |
 | Week 3 | **Pricing, holds & booking** — Add price rules, service fees and quote snapshots, add transactional holds and idempotent confirmation, add Vue booking review with hold countdown | Planned |
 | Week 4 | **Cancellations & host operations** — Add cancellation windows and simulated refunds, add host dashboard for upcoming bookings and check-ins | Planned |
@@ -84,4 +84,19 @@ flowchart LR
 
 ## Getting started
 
-Setup instructions will be added once the first services are in place.
+Needs Docker (with Compose), the .NET SDK from `global.json`, and Node.js with pnpm.
+
+```bash
+scripts/dev.sh setup   # start PostgreSQL + Redis, apply migrations, seed two demo venues
+scripts/dev.sh api     # API on http://127.0.0.1:5080
+scripts/dev.sh web     # Vue app on http://127.0.0.1:5173
+```
+
+Details, demo data and tests: [docs/setup/getting-started.md](docs/setup/getting-started.md).
+
+## Documentation
+
+- [Getting started](docs/setup/getting-started.md)
+- [Personas](docs/domain/personas.md)
+- [Capacity invariants](docs/domain/capacity-invariants.md)
+- [ADR 0001: Vue + .NET modular monolith](docs/adr/0001-vue-dotnet-modular-monolith.md)
