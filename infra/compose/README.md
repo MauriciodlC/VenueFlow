@@ -2,6 +2,8 @@
 
 PostgreSQL 17 (with pgvector and btree_gist) and Redis 7.4 for local development. Both ports bind to `127.0.0.1` only.
 
+`scripts/dev.sh setup` does everything below in one step and also seeds the demo venues (see `docs/setup/getting-started.md`). The manual steps:
+
 ```bash
 cd infra/compose
 cp .env.example .env        # then change POSTGRES_PASSWORD

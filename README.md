@@ -84,4 +84,19 @@ flowchart LR
 
 ## Getting started
 
-Setup instructions will be added once the first services are in place.
+Needs Docker (with Compose), the .NET SDK from `global.json`, and Node.js with pnpm.
+
+```bash
+scripts/dev.sh setup   # start PostgreSQL + Redis, apply migrations, seed two demo venues
+scripts/dev.sh api     # API on http://127.0.0.1:5080
+scripts/dev.sh web     # Vue app on http://127.0.0.1:5173
+```
+
+Details, demo data and tests: [docs/setup/getting-started.md](docs/setup/getting-started.md).
+
+## Documentation
+
+- [Getting started](docs/setup/getting-started.md)
+- [Personas](docs/domain/personas.md)
+- [Capacity invariants](docs/domain/capacity-invariants.md)
+- [ADR 0001: Vue + .NET modular monolith](docs/adr/0001-vue-dotnet-modular-monolith.md)
