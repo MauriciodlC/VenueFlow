@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using VenueFlow.Api.Auth;
 using VenueFlow.Api.Health;
+using VenueFlow.Api.Inventory;
 using VenueFlow.Api.Venues;
 using VenueFlow.Infrastructure;
 using VenueFlow.Infrastructure.Accounts;
@@ -19,6 +20,7 @@ var redis = builder.Configuration.GetConnectionString("Redis")
 builder.Services.AddVenueFlowPersistence(postgres);
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Session cookie for the Vue app (same origin through the Vite proxy). API
 // callers get 401/403 instead of the default redirects to a login page.
@@ -102,6 +104,7 @@ app.MapGet("/api/info", () => new ServiceInfo("venueflow-api", ServiceInfo.Curre
 
 app.MapAuthEndpoints();
 app.MapHostVenueEndpoints();
+app.MapRoomScheduleEndpoints();
 
 await app.RunAsync();
 

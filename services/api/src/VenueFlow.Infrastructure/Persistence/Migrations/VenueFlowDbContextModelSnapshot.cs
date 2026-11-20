@@ -66,6 +66,160 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.InventorySlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("EndUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_utc");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<DateTimeOffset>("StartUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_utc");
+
+                    b.Property<int>("TotalCapacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_capacity");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventory_slots");
+
+                    b.HasIndex("RoomId", "StartUtc")
+                        .IsUnique()
+                        .HasDatabaseName("ux_inventory_slots_room_id_start_utc");
+
+                    b.ToTable("inventory_slots", t =>
+                        {
+                            t.HasCheckConstraint("ck_inventory_slots_interval", "end_utc > start_utc");
+
+                            t.HasCheckConstraint("ck_inventory_slots_total_capacity", "total_capacity >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.OpeningRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<TimeOnly>("EndLocal")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("end_local");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<int>("SlotMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("slot_minutes");
+
+                    b.Property<TimeOnly>("StartLocal")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("start_local");
+
+                    b.Property<int>("Weekday")
+                        .HasColumnType("integer")
+                        .HasColumnName("weekday");
+
+                    b.HasKey("Id")
+                        .HasName("pk_opening_rules");
+
+                    b.HasIndex("RoomId", "Weekday")
+                        .HasDatabaseName("ix_opening_rules_room_id_weekday");
+
+                    b.ToTable("opening_rules", t =>
+                        {
+                            t.HasCheckConstraint("ck_opening_rules_slot_minutes", "slot_minutes BETWEEN 15 AND 720");
+
+                            t.HasCheckConstraint("ck_opening_rules_weekday", "weekday BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("ck_opening_rules_window", "end_local > start_local");
+                        });
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.RoomSchedule", b =>
+                {
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.HasKey("RoomId")
+                        .HasName("pk_room_schedules");
+
+                    b.ToTable("room_schedules", (string)null);
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.ScheduleException", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<TimeOnly?>("EndLocal")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("end_local");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<TimeOnly?>("StartLocal")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("start_local");
+
+                    b.HasKey("Id")
+                        .HasName("pk_schedule_exceptions");
+
+                    b.HasIndex("RoomId", "Date")
+                        .HasDatabaseName("ix_schedule_exceptions_room_id_date");
+
+                    b.ToTable("schedule_exceptions", t =>
+                        {
+                            t.HasCheckConstraint("ck_schedule_exceptions_capacity", "(kind = 'Closure' AND capacity IS NULL) OR (kind = 'CapacityLimit' AND capacity BETWEEN 1 AND 1000)");
+
+                            t.HasCheckConstraint("ck_schedule_exceptions_kind", "kind IN ('Closure', 'CapacityLimit')");
+
+                            t.HasCheckConstraint("ck_schedule_exceptions_window", "(start_local IS NULL AND end_local IS NULL) OR (start_local IS NOT NULL AND end_local IS NOT NULL AND end_local > start_local)");
+                        });
+                });
+
             modelBuilder.Entity("VenueFlow.Domain.Venues.Room", b =>
                 {
                     b.Property<Guid>("Id")
@@ -164,6 +318,46 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.InventorySlot", b =>
+                {
+                    b.HasOne("VenueFlow.Domain.Venues.Room", null)
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventory_slots_rooms_room_id");
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.OpeningRule", b =>
+                {
+                    b.HasOne("VenueFlow.Domain.Inventory.RoomSchedule", null)
+                        .WithMany("Rules")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_opening_rules_room_schedules_room_id");
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.RoomSchedule", b =>
+                {
+                    b.HasOne("VenueFlow.Domain.Venues.Room", null)
+                        .WithOne()
+                        .HasForeignKey("VenueFlow.Domain.Inventory.RoomSchedule", "RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_room_schedules_rooms_room_id");
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.ScheduleException", b =>
+                {
+                    b.HasOne("VenueFlow.Domain.Inventory.RoomSchedule", null)
+                        .WithMany("Exceptions")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_schedule_exceptions_room_schedules_room_id");
+                });
+
             modelBuilder.Entity("VenueFlow.Domain.Venues.Room", b =>
                 {
                     b.HasOne("VenueFlow.Domain.Venues.Venue", null)
@@ -182,6 +376,13 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_venues_users_host_id");
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Inventory.RoomSchedule", b =>
+                {
+                    b.Navigation("Exceptions");
+
+                    b.Navigation("Rules");
                 });
 
             modelBuilder.Entity("VenueFlow.Domain.Venues.Venue", b =>

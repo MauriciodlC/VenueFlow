@@ -20,7 +20,7 @@ This:
 
 1. creates `infra/compose/.env` from `.env.example` with random PostgreSQL and demo-account passwords, if it does not exist yet (the file is git-ignored);
 2. starts PostgreSQL and Redis and waits until both are healthy;
-3. runs `dotnet run --project services/api/src/VenueFlow.Api -- seed`, which applies pending EF Core migrations, inserts the demo accounts and venues and exits.
+3. runs `dotnet run --project services/api/src/VenueFlow.Api -- seed`, which applies pending EF Core migrations, inserts the demo accounts, venues and room schedules and exits.
 
 Running it again is safe: containers that are already up stay up, applied migrations are skipped and existing demo venues are left alone.
 
@@ -49,6 +49,19 @@ The seed lives in `services/api/src/VenueFlow.Infrastructure/Seeding/DemoVenues.
 The two zones are chosen on purpose: one changes offset twice a year and one never does, so schedule and DST work can be demonstrated on real seed rows.
 
 Ids are fixed GUIDs, which makes the seed idempotent and lets tests and demo scripts refer to the same rows. The seeder only inserts venues whose id is missing; it never updates or deletes. When the seed changes, reset the database.
+
+### Room schedules
+
+`DemoSchedules.cs` gives every demo room weekly opening hours in its venue's local time, so the slot listing has data straight after `seed`:
+
+| Room | Opening rules | Exceptions |
+|---|---|---|
+| Workshop Hall | Mon–Fri 09:00–18:00, 60-minute slots; Sat 10:00–14:00, 120-minute slots | 24 Dec 2026 14:00–18:00 limited to 10 seats; 25 Dec 2026 closed |
+| Quiet Room | Mon–Fri 08:00–20:00, 30-minute slots | — |
+| Main Loft | Mon–Sat 08:00–20:00, 120-minute slots | 8 Dec 2026 closed |
+| Meeting Pod | Mon–Fri 09:00–17:00, 60-minute slots | — |
+
+A demo room without a schedule gets this one on the next `seed`, including databases seeded before schedules existed; a schedule a host has saved is never overwritten.
 
 ### Accounts
 
@@ -91,7 +104,7 @@ Another host's venue answers `404`, the same as an unknown id. Writes without `I
 ## Tests
 
 ```bash
-cd services/api && dotnet test VenueFlow.sln          # domain, seed, schema, auth and host-venue API tests
+cd services/api && dotnet test VenueFlow.sln          # domain, seed, schema, auth, host-venue and schedule API tests
 pnpm install && pnpm test                             # Vue component and unit tests
 scripts/dev.sh e2e                                    # Playwright E2E against the running API (needs setup + api)
 ```

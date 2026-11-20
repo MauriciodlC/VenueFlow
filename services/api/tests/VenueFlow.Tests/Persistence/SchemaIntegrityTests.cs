@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using VenueFlow.Domain.Accounts;
+using VenueFlow.Domain.Inventory;
 using VenueFlow.Domain.Venues;
 using VenueFlow.Infrastructure.Persistence;
 
@@ -147,5 +148,120 @@ public sealed class SchemaIntegrityTests : IDisposable
         Assert.NotNull(snapshot.FindEntityType(typeof(UserAccount).FullName!));
         Assert.True(venue.FindProperty(nameof(Venue.Revision))!.IsConcurrencyToken);
         Assert.Contains(venue.GetCheckConstraints(), check => check.Name == "ck_venues_status");
+    }
+
+    [Fact]
+    public void Inventory_tables_have_named_keys()
+    {
+        Assert.Equal(("room_schedules", "pk_room_schedules"), TableAndKey<RoomSchedule>());
+        Assert.Equal(("opening_rules", "pk_opening_rules"), TableAndKey<OpeningRule>());
+        Assert.Equal(("schedule_exceptions", "pk_schedule_exceptions"), TableAndKey<ScheduleException>());
+        Assert.Equal(("inventory_slots", "pk_inventory_slots"), TableAndKey<InventorySlot>());
+    }
+
+    [Fact]
+    public void A_room_has_at_most_one_schedule_and_it_goes_with_the_room()
+    {
+        var schedule = Model.FindEntityType(typeof(RoomSchedule))!;
+
+        var room = Assert.Single(schedule.GetForeignKeys());
+        Assert.Equal(typeof(Room), room.PrincipalEntityType.ClrType);
+        Assert.True(room.IsUnique);
+        Assert.Equal(DeleteBehavior.Cascade, room.DeleteBehavior);
+        Assert.Equal(new[] { nameof(RoomSchedule.RoomId) }, schedule.FindPrimaryKey()!.Properties.Select(property => property.Name));
+        Assert.True(schedule.FindProperty(nameof(RoomSchedule.Revision))!.IsConcurrencyToken);
+    }
+
+    [Fact]
+    public void Rules_and_exceptions_are_indexed_for_expansion_and_cascade_with_the_schedule()
+    {
+        var rule = Model.FindEntityType(typeof(OpeningRule))!;
+        var exception = Model.FindEntityType(typeof(ScheduleException))!;
+
+        Assert.Equal(
+            new[] { nameof(OpeningRule.RoomId), nameof(OpeningRule.Weekday) },
+            Assert.Single(rule.GetIndexes(), index => index.GetDatabaseName() == "ix_opening_rules_room_id_weekday").Properties.Select(property => property.Name));
+        Assert.Equal(
+            new[] { nameof(ScheduleException.RoomId), nameof(ScheduleException.Date) },
+            Assert.Single(exception.GetIndexes(), index => index.GetDatabaseName() == "ix_schedule_exceptions_room_id_date").Properties.Select(property => property.Name));
+
+        foreach (var entity in new[] { rule, exception })
+        {
+            var parent = Assert.Single(entity.GetForeignKeys());
+            Assert.Equal(typeof(RoomSchedule), parent.PrincipalEntityType.ClrType);
+            Assert.Equal(DeleteBehavior.Cascade, parent.DeleteBehavior);
+        }
+    }
+
+    [Fact]
+    public void Rule_and_exception_columns_use_local_time_and_date_types()
+    {
+        var rule = Model.FindEntityType(typeof(OpeningRule))!;
+        var exception = Model.FindEntityType(typeof(ScheduleException))!;
+
+        Assert.Equal("time without time zone", rule.FindProperty(nameof(OpeningRule.StartLocal))!.GetRelationalTypeMapping().StoreType);
+        Assert.Equal("integer", rule.FindProperty(nameof(OpeningRule.Weekday))!.GetRelationalTypeMapping().StoreType);
+        Assert.Equal("date", exception.FindProperty(nameof(ScheduleException.Date))!.GetRelationalTypeMapping().StoreType);
+        Assert.True(exception.FindProperty(nameof(ScheduleException.StartLocal))!.IsNullable);
+        Assert.Equal(typeof(string), exception.FindProperty(nameof(ScheduleException.Kind))!.GetProviderClrType());
+        Assert.Null(exception.FindProperty(nameof(ScheduleException.IsWholeDay)));
+    }
+
+    [Fact]
+    public void Schedule_check_constraints_cover_windows_weekdays_kinds_and_capacity()
+    {
+        var ruleChecks = Model.FindEntityType(typeof(OpeningRule))!.GetCheckConstraints().ToDictionary(check => check.Name!, check => check.Sql);
+        var exceptionChecks = Model.FindEntityType(typeof(ScheduleException))!.GetCheckConstraints().ToDictionary(check => check.Name!, check => check.Sql);
+
+        Assert.Equal("weekday BETWEEN 0 AND 6", ruleChecks["ck_opening_rules_weekday"]);
+        Assert.Equal("end_local > start_local", ruleChecks["ck_opening_rules_window"]);
+        Assert.Equal(
+            $"slot_minutes BETWEEN {OpeningRule.MinSlotMinutes} AND {OpeningRule.MaxSlotMinutes}",
+            ruleChecks["ck_opening_rules_slot_minutes"]);
+        Assert.All(Enum.GetNames<ScheduleExceptionKind>(), name => Assert.Contains($"'{name}'", exceptionChecks["ck_schedule_exceptions_kind"], StringComparison.Ordinal));
+        Assert.Contains("end_local > start_local", exceptionChecks["ck_schedule_exceptions_window"], StringComparison.Ordinal);
+        Assert.Contains($"capacity BETWEEN 1 AND {Room.MaxCapacity}", exceptionChecks["ck_schedule_exceptions_capacity"], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Inventory_slots_are_unique_per_room_and_start_and_versioned()
+    {
+        var slot = Model.FindEntityType(typeof(InventorySlot))!;
+
+        var unique = Assert.Single(slot.GetIndexes(), index => index.GetDatabaseName() == "ux_inventory_slots_room_id_start_utc");
+        Assert.True(unique.IsUnique);
+        Assert.Equal(new[] { nameof(InventorySlot.RoomId), nameof(InventorySlot.StartUtc) }, unique.Properties.Select(property => property.Name));
+        Assert.True(slot.FindProperty(nameof(InventorySlot.Version))!.IsConcurrencyToken);
+        Assert.Equal("timestamp with time zone", slot.FindProperty(nameof(InventorySlot.StartUtc))!.GetRelationalTypeMapping().StoreType);
+
+        var room = Assert.Single(slot.GetForeignKeys());
+        Assert.Equal(typeof(Room), room.PrincipalEntityType.ClrType);
+        Assert.Equal(DeleteBehavior.Restrict, room.DeleteBehavior);
+        Assert.Equal(
+            new[] { "ck_inventory_slots_interval", "ck_inventory_slots_total_capacity" },
+            slot.GetCheckConstraints().Select(check => check.Name).Order());
+    }
+
+    [Fact]
+    public void Migration_snapshot_includes_schedules_and_slots()
+    {
+        Assert.Equal("20261120170000_RoomSchedulesAndInventorySlots", _db.Database.GetMigrations().Last());
+
+        var snapshot = _db.GetService<IMigrationsAssembly>().ModelSnapshot!.Model;
+        foreach (var type in new[] { typeof(RoomSchedule), typeof(OpeningRule), typeof(ScheduleException), typeof(InventorySlot) })
+        {
+            Assert.NotNull(snapshot.FindEntityType(type.FullName!));
+        }
+
+        var slot = snapshot.FindEntityType(typeof(InventorySlot).FullName!)!;
+        Assert.Contains(slot.GetIndexes(), index => index.IsUnique && index.GetDatabaseName() == "ux_inventory_slots_room_id_start_utc");
+        var exception = snapshot.FindEntityType(typeof(ScheduleException).FullName!)!;
+        Assert.Equal(3, exception.GetCheckConstraints().Count());
+    }
+
+    private (string? Table, string? Key) TableAndKey<T>()
+    {
+        var entity = Model.FindEntityType(typeof(T))!;
+        return (entity.GetTableName(), entity.FindPrimaryKey()!.GetName());
     }
 }

@@ -9,7 +9,8 @@ namespace VenueFlow.Infrastructure.Seeding;
 public sealed record SeedResult(int AccountsAdded, int AccountsAlreadyPresent, int VenuesAdded, int VenuesAlreadyPresent);
 
 /// <summary>
-/// Inserts the demo accounts and venues that are not in the database yet.
+/// Inserts the demo accounts and venues (with their room schedules) that are
+/// not in the database yet.
 /// Running it twice changes nothing; rows that already exist are left as they
 /// are (including their passwords), so to start over reset the database
 /// (<c>scripts/dev.sh reset</c>) and seed again.
@@ -59,7 +60,28 @@ public static class DemoSeeder
         var missing = SelectMissing(demo, existing);
         db.Venues.AddRange(missing);
 
-        if (newAccounts.Count > 0 || missing.Count > 0)
+        // Demo rooms without a schedule get the demo one, including rooms seeded
+        // before schedules existed. A schedule the host has saved is kept.
+        var schedules = DemoSchedules.Build();
+        var scheduleRoomIds = schedules.Keys.ToList();
+        var storedRooms = await db.Rooms
+            .Where(room => scheduleRoomIds.Contains(room.Id))
+            .Select(room => room.Id)
+            .ToListAsync(cancellationToken);
+        var scheduledRooms = await db.RoomSchedules
+            .Where(schedule => scheduleRoomIds.Contains(schedule.RoomId))
+            .Select(schedule => schedule.RoomId)
+            .ToListAsync(cancellationToken);
+        var newSchedules = storedRooms
+            .Concat(missing.SelectMany(venue => venue.Rooms).Select(room => room.Id))
+            .Distinct()
+            .Except(scheduledRooms)
+            .Where(schedules.ContainsKey)
+            .Select(roomId => schedules[roomId])
+            .ToList();
+        db.RoomSchedules.AddRange(newSchedules);
+
+        if (newAccounts.Count > 0 || missing.Count > 0 || newSchedules.Count > 0)
         {
             await db.SaveChangesAsync(cancellationToken);
         }
