@@ -23,6 +23,49 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("VenueFlow.Domain.Accounts.UserAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id")
+                        .HasName("pk_users");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ux_users_email");
+
+                    b.ToTable("users", t =>
+                        {
+                            t.HasCheckConstraint("ck_users_role", "role IN ('Guest', 'Host', 'Staff', 'Admin')");
+                        });
+                });
+
             modelBuilder.Entity("VenueFlow.Domain.Venues.Room", b =>
                 {
                     b.Property<Guid>("Id")
@@ -62,11 +105,46 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccessibilityNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("accessibility_notes");
+
+                    b.Property<string>("AddressLine")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("address_line");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("host_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
 
                     b.Property<string>("TimeZoneId")
                         .IsRequired()
@@ -77,7 +155,13 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_venues");
 
-                    b.ToTable("venues", (string)null);
+                    b.HasIndex("HostId")
+                        .HasDatabaseName("ix_venues_host_id");
+
+                    b.ToTable("venues", t =>
+                        {
+                            t.HasCheckConstraint("ck_venues_status", "status IN ('Draft', 'InReview', 'Published')");
+                        });
                 });
 
             modelBuilder.Entity("VenueFlow.Domain.Venues.Room", b =>
@@ -88,6 +172,16 @@ namespace VenueFlow.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_rooms_venues_venue_id");
+                });
+
+            modelBuilder.Entity("VenueFlow.Domain.Venues.Venue", b =>
+                {
+                    b.HasOne("VenueFlow.Domain.Accounts.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_venues_users_host_id");
                 });
 
             modelBuilder.Entity("VenueFlow.Domain.Venues.Venue", b =>

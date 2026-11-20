@@ -32,6 +32,18 @@ export const router = createRouter({
       meta: { title: 'Host workspace', roles: ['host'] },
     },
     {
+      path: '/host/venues/new',
+      name: 'host-venue-new',
+      component: () => import('@/views/VenueDraftView.vue'),
+      meta: { title: 'New venue', roles: ['host'] },
+    },
+    {
+      path: '/host/venues/:id',
+      name: 'host-venue-edit',
+      component: () => import('@/views/VenueDraftView.vue'),
+      meta: { title: 'Edit venue', roles: ['host'] },
+    },
+    {
       path: '/admin',
       name: 'admin',
       component: () => import('@/views/AdminView.vue'),
@@ -52,11 +64,12 @@ export const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const roles = to.meta.roles
   if (!roles) return true
 
   const session = useSessionStore()
+  await session.restore()
   if (!session.isSignedIn) {
     return { name: 'sign-in', query: { redirect: to.fullPath } }
   }

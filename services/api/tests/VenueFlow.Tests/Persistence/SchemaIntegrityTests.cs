@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
+using VenueFlow.Domain.Accounts;
 using VenueFlow.Domain.Venues;
 using VenueFlow.Infrastructure.Persistence;
 
@@ -88,5 +89,63 @@ public sealed class SchemaIntegrityTests : IDisposable
         var room = snapshot.Model.FindEntityType(typeof(Room).FullName!)!;
         Assert.Contains(room.GetCheckConstraints(), check => check.Name == "ck_rooms_capacity_range");
         Assert.Contains(room.GetIndexes(), index => index.IsUnique && index.GetDatabaseName() == "ux_rooms_venue_id_name");
+    }
+
+    [Fact]
+    public void Users_have_unique_emails_and_roles_stored_by_name()
+    {
+        var user = Model.FindEntityType(typeof(UserAccount))!;
+
+        Assert.Equal("users", user.GetTableName());
+        var email = Assert.Single(user.GetIndexes(), index => index.GetDatabaseName() == "ux_users_email");
+        Assert.True(email.IsUnique);
+        Assert.Equal(typeof(string), user.FindProperty(nameof(UserAccount.Role))!.GetProviderClrType());
+        Assert.Equal("ck_users_role", Assert.Single(user.GetCheckConstraints()).Name);
+        Assert.Null(user.FindProperty(nameof(UserAccount.IsHost)));
+    }
+
+    [Fact]
+    public void Venues_belong_to_a_host_and_cannot_orphan_on_user_delete()
+    {
+        var venue = Model.FindEntityType(typeof(Venue))!;
+
+        var host = Assert.Single(venue.GetForeignKeys(), key => key.PrincipalEntityType.ClrType == typeof(UserAccount));
+        Assert.Equal("fk_venues_users_host_id", host.GetConstraintName());
+        Assert.Equal(DeleteBehavior.Restrict, host.DeleteBehavior);
+        Assert.True(host.IsRequired);
+        Assert.Contains(venue.GetIndexes(), index => index.GetDatabaseName() == "ix_venues_host_id");
+    }
+
+    [Fact]
+    public void Venue_revision_is_the_concurrency_token_and_status_is_checked()
+    {
+        var venue = Model.FindEntityType(typeof(Venue))!;
+
+        Assert.True(venue.FindProperty(nameof(Venue.Revision))!.IsConcurrencyToken);
+        Assert.Equal(typeof(string), venue.FindProperty(nameof(Venue.Status))!.GetProviderClrType());
+        Assert.Equal("ck_venues_status", Assert.Single(venue.GetCheckConstraints()).Name);
+        Assert.True(venue.FindProperty(nameof(Venue.Description))!.IsNullable);
+    }
+
+    [Fact]
+    public void Check_constraints_list_every_enum_value()
+    {
+        var userCheck = Assert.Single(Model.FindEntityType(typeof(UserAccount))!.GetCheckConstraints()).Sql;
+        var venueCheck = Assert.Single(Model.FindEntityType(typeof(Venue))!.GetCheckConstraints()).Sql;
+
+        Assert.All(Enum.GetNames<UserRole>(), name => Assert.Contains($"'{name}'", userCheck, StringComparison.Ordinal));
+        Assert.All(Enum.GetNames<VenueStatus>(), name => Assert.Contains($"'{name}'", venueCheck, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Migration_snapshot_includes_host_accounts_and_venue_drafts()
+    {
+        Assert.Contains("20261120143000_HostAccountsAndVenueDrafts", _db.Database.GetMigrations());
+
+        var snapshot = _db.GetService<IMigrationsAssembly>().ModelSnapshot!.Model;
+        var venue = snapshot.FindEntityType(typeof(Venue).FullName!)!;
+        Assert.NotNull(snapshot.FindEntityType(typeof(UserAccount).FullName!));
+        Assert.True(venue.FindProperty(nameof(Venue.Revision))!.IsConcurrencyToken);
+        Assert.Contains(venue.GetCheckConstraints(), check => check.Name == "ck_venues_status");
     }
 }

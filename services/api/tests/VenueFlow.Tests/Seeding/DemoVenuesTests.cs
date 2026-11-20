@@ -1,3 +1,4 @@
+using VenueFlow.Domain.Accounts;
 using VenueFlow.Domain.Venues;
 using VenueFlow.Infrastructure.Seeding;
 
@@ -67,5 +68,27 @@ public sealed class DemoVenuesTests
         Assert.Equal(DemoVenues.HarborLoftId, missing.Id);
 
         Assert.Empty(DemoSeeder.SelectMissing(demo, [DemoVenues.RiversideStudioId, DemoVenues.HarborLoftId]));
+    }
+
+    [Fact]
+    public void Demo_venues_are_published_and_owned_by_the_demo_host()
+    {
+        Assert.All(DemoVenues.Build(), venue =>
+        {
+            Assert.Equal(DemoAccounts.HostId, venue.HostId);
+            Assert.Equal(VenueStatus.Published, venue.Status);
+            Assert.Empty(venue.MissingForSubmission());
+        });
+    }
+
+    [Fact]
+    public void Demo_accounts_cover_every_role_with_unique_ids_and_test_addresses()
+    {
+        var accounts = DemoAccounts.Build();
+
+        Assert.Equal(Enum.GetValues<UserRole>().ToHashSet(), accounts.Select(account => account.Role).ToHashSet());
+        Assert.Equal(accounts.Count, accounts.Select(account => account.Id).Distinct().Count());
+        Assert.All(accounts, account => Assert.EndsWith("@example.test", account.Email, StringComparison.Ordinal));
+        Assert.All(accounts, account => Assert.Equal(string.Empty, account.PasswordHash));
     }
 }

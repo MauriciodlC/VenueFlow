@@ -58,3 +58,150 @@ button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
+
+.narrow {
+  max-width: 28rem;
+}
+
+form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #b8c1cc;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+[aria-invalid='true'] {
+  border-color: #b42318;
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+button,
+a.button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #1d4ed8;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button.secondary {
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.error,
+.field-error {
+  color: #b42318;
+}
+
+.success {
+  color: #067647;
+}
+
+.hint {
+  color: #52606d;
+  font-size: 0.9rem;
+  margin-top: -0.4rem;
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #f79009;
+  background: #fffaeb;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.venue-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.venue-table th,
+.venue-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #d9dee5;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: #eef2f6;
+}
+
+.status-published {
+  background: #dcfae6;
+}
+
+.status-inreview {
+  background: #fef0c7;
+}
+
+.wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.wizard-steps button {
+  background: #ffffff;
+  color: #1f2933;
+  border-color: #b8c1cc;
+}
+
+.wizard-steps button[aria-current='step'] {
+  border-color: #1d4ed8;
+  font-weight: 600;
+}
+
+.room-row {
+  display: grid;
+  grid-template-columns: 1fr 8rem auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.room-row .field-error {
+  grid-column: 1 / -1;
+}
+
+.listing-preview {
+  padding: 1rem 1.25rem;
+  border: 1px solid #d9dee5;
+  border-radius: 6px;
+  background: #ffffff;
+  margin-bottom: 1rem;
+}

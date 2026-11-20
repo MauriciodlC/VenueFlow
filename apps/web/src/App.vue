@@ -5,10 +5,13 @@ import { useSessionStore } from '@/stores/session'
 const session = useSessionStore()
 const router = useRouter()
 
-function signOut() {
-  session.signOut()
-  router.push({ name: 'search' })
+async function signOut() {
+  await session.signOut()
+  await router.push({ name: 'search' })
 }
+
+// Show the right navigation on first load if a session cookie already exists.
+void session.restore()
 </script>
 
 <template>

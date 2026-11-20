@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Local development helper for VenueFlow.
 #
-#   scripts/dev.sh setup   start PostgreSQL + Redis, apply migrations, seed demo venues
+#   scripts/dev.sh setup   start PostgreSQL + Redis, apply migrations, seed demo accounts and venues
 #   scripts/dev.sh api     run the API on http://127.0.0.1:5080 against the local services
 #   scripts/dev.sh web     install web dependencies and run the Vue dev server
 #   scripts/dev.sh reset   delete the local database volume (asks first)
@@ -19,15 +19,23 @@ need() {
   fi
 }
 
-# Creates infra/compose/.env on first run with a random PostgreSQL password,
-# then exports the connection strings the API reads.
+random_secret() {
+  od -An -N18 -tx1 /dev/urandom | tr -d ' \n'
+}
+
+# Creates infra/compose/.env on first run with a random PostgreSQL password and
+# demo-account password, then exports the settings the API reads. Older .env
+# files without DEMO_PASSWORD get one appended.
 load_env() {
   if [[ ! -f "$env_file" ]]; then
-    local password
-    password="$(od -An -N18 -tx1 /dev/urandom | tr -d ' \n')"
-    sed "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$password/" "$env_file.example" >"$env_file"
+    sed -e "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(random_secret)/" \
+      -e "s/^DEMO_PASSWORD=.*/DEMO_PASSWORD=$(random_secret)/" \
+      "$env_file.example" >"$env_file"
     chmod 600 "$env_file"
-    echo "Created infra/compose/.env with a random PostgreSQL password."
+    echo "Created infra/compose/.env with random PostgreSQL and demo-account passwords."
+  elif ! grep -q '^DEMO_PASSWORD=' "$env_file"; then
+    echo "DEMO_PASSWORD=$(random_secret)" >>"$env_file"
+    echo "Added a random DEMO_PASSWORD to infra/compose/.env."
   fi
 
   set -a
@@ -37,6 +45,7 @@ load_env() {
 
   export ConnectionStrings__Postgres="Host=127.0.0.1;Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
   export ConnectionStrings__Redis="127.0.0.1:${REDIS_PORT:-6379}"
+  export Demo__Password="${DEMO_PASSWORD:-}"
 }
 
 compose() {
@@ -49,9 +58,10 @@ cmd_setup() {
   load_env
   echo "Starting PostgreSQL and Redis..."
   compose up -d --wait
-  echo "Applying migrations and seeding demo venues..."
+  echo "Applying migrations and seeding demo accounts and venues..."
   dotnet run --project "$api_project" -- seed
-  echo "Done. Next: scripts/dev.sh api (and scripts/dev.sh web in a second terminal)."
+  echo "Done. Demo accounts (guest|host|staff|admin|other-host)@example.test use DEMO_PASSWORD from infra/compose/.env."
+  echo "Next: scripts/dev.sh api (and scripts/dev.sh web in a second terminal)."
 }
 
 cmd_api() {

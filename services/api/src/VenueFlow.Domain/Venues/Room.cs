@@ -21,15 +21,10 @@ public sealed class Room
             throw new DomainException("room_id_required", "A room needs a non-empty id.");
         }
 
-        if (capacity is < 1 or > MaxCapacity)
-        {
-            throw new DomainException("room_capacity_invalid", $"Room capacity must be between 1 and {MaxCapacity}.");
-        }
-
         Id = id;
         VenueId = venueId;
-        Name = Text.Required(name, NameMaxLength, "room_name");
-        Capacity = capacity;
+        Rename(name);
+        ChangeCapacity(capacity);
     }
 
     public Guid Id { get; private set; }
@@ -39,4 +34,16 @@ public sealed class Room
     public string Name { get; private set; } = string.Empty;
 
     public int Capacity { get; private set; }
+
+    internal void Rename(string name) => Name = Text.Required(name, NameMaxLength, "room_name");
+
+    internal void ChangeCapacity(int capacity)
+    {
+        if (capacity is < 1 or > MaxCapacity)
+        {
+            throw new DomainException("room_capacity_invalid", $"Room capacity must be between 1 and {MaxCapacity}.");
+        }
+
+        Capacity = capacity;
+    }
 }
