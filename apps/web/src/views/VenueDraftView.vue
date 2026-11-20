@@ -23,6 +23,7 @@ import {
   type FieldErrors,
   type WizardStep,
 } from '@/venues/draftValidation'
+import { accessibilityLabels, appendAccessibilityLabel, hasAccessibilityLabel } from '@/venues/accessibilityLabels'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,6 +146,10 @@ async function goTo(target: WizardStep | 'preview') {
   if (target === 'preview' && draft.value) {
     preview.value = await previewVenue(draft.value.id).catch(() => null)
   }
+}
+
+function addAccessibilityLabel(label: string) {
+  form.value.accessibilityNotes = appendAccessibilityLabel(form.value.accessibilityNotes, label)
 }
 
 function addRoom() {
@@ -331,6 +336,23 @@ async function submitForReview() {
             <p class="hint">
               Describe entrances, lifts, toilets and anything else guests should know. It is shown to guests exactly as you write it.
             </p>
+            <div
+              class="label-suggestions"
+              role="group"
+              aria-label="Common access features"
+            >
+              <button
+                v-for="label in accessibilityLabels"
+                :key="label"
+                type="button"
+                class="secondary small"
+                :disabled="hasAccessibilityLabel(form.accessibilityNotes, label)"
+                :aria-label="`Add ${label} to accessibility notes`"
+                @click="addAccessibilityLabel(label)"
+              >
+                + {{ label }}
+              </button>
+            </div>
             <p
               v-if="errors.accessibilityNotes"
               class="field-error"

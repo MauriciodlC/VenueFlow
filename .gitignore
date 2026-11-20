@@ -20,3 +20,7 @@ coverage/
 .vs/
 .vscode/
 .DS_Store
+
+# Playwright
+apps/web/test-results/
+apps/web/playwright-report/

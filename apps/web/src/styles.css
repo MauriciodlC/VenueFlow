@@ -205,3 +205,15 @@ button:disabled {
   background: #ffffff;
   margin-bottom: 1rem;
 }
+
+.label-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+button.small {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+}

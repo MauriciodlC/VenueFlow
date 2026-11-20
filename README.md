@@ -97,6 +97,7 @@ Details, demo data and tests: [docs/setup/getting-started.md](docs/setup/getting
 ## Documentation
 
 - [Getting started](docs/setup/getting-started.md)
+- [Host onboarding and accessibility labels](docs/hosts/onboarding.md)
 - [Personas](docs/domain/personas.md)
 - [Capacity invariants](docs/domain/capacity-invariants.md)
 - [ADR 0001: Vue + .NET modular monolith](docs/adr/0001-vue-dotnet-modular-monolith.md)

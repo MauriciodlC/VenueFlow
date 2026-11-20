@@ -93,9 +93,12 @@ Another host's venue answers `404`, the same as an unknown id. Writes without `I
 ```bash
 cd services/api && dotnet test VenueFlow.sln          # domain, seed, schema, auth and host-venue API tests
 pnpm install && pnpm test                             # Vue component and unit tests
+scripts/dev.sh e2e                                    # Playwright E2E against the running API (needs setup + api)
 ```
 
 The schema tests (`tests/VenueFlow.Tests/Persistence/SchemaIntegrityTests.cs`) check, without a database, that the EF Core model and the migration snapshot keep the table names, column limits, the unique room-name and email indexes, the capacity, role and status check constraints, the venue → room cascade, the venue → host foreign key and the revision concurrency token. The auth and host-venue API tests run the real endpoints against an EF Core in-memory database holding the demo seed (`tests/VenueFlow.Tests/Api/SeededApiFactory.cs`); database constraints are not enforced there. CI also runs `dotnet ef migrations has-pending-model-changes` so a model change cannot ship without its migration.
+
+`VenueAccessAndTransitionTests` and `VenueStatusTransitionTests` cover the denial paths: another host, non-host roles and signed-out callers on every venue route, room ids from another venue, and every status change the lifecycle does not allow — each one also checks the venue is left unchanged. The Playwright tests in `apps/web/e2e/` drive the real stack in Chromium: create and submit a draft, and try to open or save another host's venue. See [Host onboarding](../hosts/onboarding.md#trying-it-end-to-end) for what they cover; CI runs them in the `e2e` job.
 
 ## Manual steps
 

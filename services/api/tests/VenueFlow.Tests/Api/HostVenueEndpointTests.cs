@@ -7,17 +7,6 @@ namespace VenueFlow.Tests.Api;
 
 public sealed class HostVenueEndpointTests(SeededApiFactory factory) : IClassFixture<SeededApiFactory>
 {
-    private static object CompleteBody(string name) => new
-    {
-        name,
-        timeZoneId = "Europe/Madrid",
-        description = "Bright studio with long tables.",
-        city = "Madrid",
-        addressLine = "Calle Falsa 1 (synthetic)",
-        accessibilityNotes = "Step-free entrance.",
-        rooms = new[] { new { id = (Guid?)null, name = "Main room", capacity = 16 } },
-    };
-
     [Fact]
     public async Task Anonymous_callers_get_401_and_non_hosts_get_403()
     {
@@ -53,7 +42,7 @@ public sealed class HostVenueEndpointTests(SeededApiFactory factory) : IClassFix
 
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/host/venues/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/host/venues/{id}/preview")).StatusCode);
-        using var put = await other.PutDraftAsync(id, CompleteBody("Hijacked"), "*");
+        using var put = await other.PutDraftAsync(id, ApiClientExtensions.CompleteDraftBody("Hijacked"), "*");
         Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
     }
 
@@ -89,15 +78,15 @@ public sealed class HostVenueEndpointTests(SeededApiFactory factory) : IClassFix
         using var host = await factory.SignedInClientAsync("host@example.test");
         var (draft, etag) = await host.CreateDraftAsync();
 
-        using var missing = await host.PutDraftAsync(draft.Id, CompleteBody("Studio"), ifMatch: null);
+        using var missing = await host.PutDraftAsync(draft.Id, ApiClientExtensions.CompleteDraftBody("Studio"), ifMatch: null);
         Assert.Equal(HttpStatusCode.PreconditionRequired, missing.StatusCode);
 
-        using var saved = await host.PutDraftAsync(draft.Id, CompleteBody("Studio v2"), etag);
+        using var saved = await host.PutDraftAsync(draft.Id, ApiClientExtensions.CompleteDraftBody("Studio v2"), etag);
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
         Assert.Equal("\"2\"", saved.Headers.ETag!.ToString());
 
         // A second editor still holding revision 1 must not overwrite revision 2.
-        using var stale = await host.PutDraftAsync(draft.Id, CompleteBody("Stale edit"), etag);
+        using var stale = await host.PutDraftAsync(draft.Id, ApiClientExtensions.CompleteDraftBody("Stale edit"), etag);
         Assert.Equal(HttpStatusCode.PreconditionFailed, stale.StatusCode);
         Assert.Equal("revision_mismatch", await stale.ProblemCodeAsync());
 
@@ -112,7 +101,7 @@ public sealed class HostVenueEndpointTests(SeededApiFactory factory) : IClassFix
     {
         using var host = await factory.SignedInClientAsync("host@example.test");
         var (draft, etag) = await host.CreateDraftAsync();
-        (await host.PutDraftAsync(draft.Id, CompleteBody("Preview studio"), etag)).Dispose();
+        (await host.PutDraftAsync(draft.Id, ApiClientExtensions.CompleteDraftBody("Preview studio"), etag)).Dispose();
 
         using var response = await host.GetAsync($"/api/host/venues/{draft.Id}/preview");
         var json = await response.Content.ReadAsStringAsync();
@@ -135,13 +124,13 @@ public sealed class HostVenueEndpointTests(SeededApiFactory factory) : IClassFix
         Assert.Equal(HttpStatusCode.UnprocessableEntity, incomplete.StatusCode);
         Assert.Equal("venue_incomplete", await incomplete.ProblemCodeAsync());
 
-        using var saved = await host.PutDraftAsync(draft.Id, CompleteBody("Ready studio"), etag);
+        using var saved = await host.PutDraftAsync(draft.Id, ApiClientExtensions.CompleteDraftBody("Ready studio"), etag);
         using var submitted = await host.SubmitAsync(draft.Id, saved.Headers.ETag!.ToString());
         var inReview = await submitted.Content.ReadFromJsonAsync<VenueDraftResponse>();
         Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
         Assert.Equal("InReview", inReview!.Status);
 
-        using var edit = await host.PutDraftAsync(draft.Id, CompleteBody("Too late"), submitted.Headers.ETag!.ToString());
+        using var edit = await host.PutDraftAsync(draft.Id, ApiClientExtensions.CompleteDraftBody("Too late"), submitted.Headers.ETag!.ToString());
         Assert.Equal(HttpStatusCode.Conflict, edit.StatusCode);
         Assert.Equal("venue_not_editable", await edit.ProblemCodeAsync());
     }
